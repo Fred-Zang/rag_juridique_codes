@@ -1,0 +1,75 @@
+# docker-compose.langfuse.yml
+# LangFuse - Observabilité pour LangChain (self-hosted)
+#
+# Usage:
+#   docker-compose -f docker-compose.langfuse.yml up -d
+#   UI: http://localhost:3000
+#
+# Première utilisation:
+#   1. Accéder à http://localhost:3000
+#   2. Créer un compte (local, pas besoin d'email externe)
+#   3. Créer un projet "Legal RAG Benchmark"
+#   4. Récupérer les clés API dans Settings → API Keys
+#
+# Variables d'environnement à configurer dans .env :
+#   LANGFUSE_PUBLIC_KEY=pk-lf-...
+#   LANGFUSE_SECRET_KEY=sk-lf-...
+#   LANGFUSE_HOST=http://localhost:3000
+
+services:
+  langfuse-server:
+    image: langfuse/langfuse:latest
+    container_name: langfuse
+    ports:
+      - "3000:3000"
+    environment:
+      # Base de données
+      - DATABASE_URL=postgresql://postgres:postgres@langfuse-db:5432/langfuse
+
+      # Secrets (CHANGER EN PRODUCTION !)
+      # Générer avec: openssl rand -base64 32
+      - NEXTAUTH_SECRET=change-this-to-a-random-secret-in-production
+      - SALT=change-this-salt-in-production
+
+      # URL publique
+      - NEXTAUTH_URL=http://localhost:3000
+
+      # Désactiver télémétrie (optionnel)
+      - TELEMETRY_ENABLED=false
+
+      # Configuration email (optionnel, pour invitations)
+      # - SMTP_CONNECTION_URL=smtp://...
+      # - EMAIL_FROM_ADDRESS=noreply@example.com
+
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - langfuse-network
+
+  langfuse-db:
+    image: postgres:15-alpine
+    container_name: langfuse-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=langfuse
+    volumes:
+      - langfuse_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - langfuse-network
+
+volumes:
+  langfuse_postgres_data:
+    name: langfuse_postgres_data
+
+networks:
+  langfuse-network:
+    name: langfuse-network

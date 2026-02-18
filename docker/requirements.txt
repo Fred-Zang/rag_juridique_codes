@@ -1,0 +1,8 @@
+numpy>=2.0,<2.3
+pyyaml
+rank-bm25
+sentence-transformers
+pytest
+elasticsearch>=8.12,<9
+tqdm
+
